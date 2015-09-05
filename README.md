@@ -1,2 +1,1 @@
-# untitled
-Untitled game for js13k
+Untitled game for JS13k
