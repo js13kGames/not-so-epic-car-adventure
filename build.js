@@ -143,8 +143,8 @@ function Game() {
 	G.height = 200;
 
 	if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
-		G.width = window.innerWidth;
-		G.height = window.innerHeight;
+		G.width = 100;
+		G.height = 100;
 	}
 
 	G.canvas.style.width = 4*G.width + 'px';
