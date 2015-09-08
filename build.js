@@ -141,6 +141,15 @@ function Game() {
 
 	G.width = 200;
 	G.height = 200;
+
+	if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+		G.width = window.innerWidth;
+		G.height = window.innerHeight;
+	}
+
+	G.canvas.style.width = 4*G.width + 'px';
+	G.canvas.style.height = 4*G.height + 'px';
+
 	G.keys = {};
 
 	G.roadlines = [10, 50, 90, 130, 170, 210];

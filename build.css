@@ -7,7 +7,4 @@
   image-rendering: -o-crisp-edges;            
   image-rendering: pixelated;               
   -ms-interpolation-mode: nearest-neighbor;   
-
-  width: 800px;
-  height: 800px;
 }
