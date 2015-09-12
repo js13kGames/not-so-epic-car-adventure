@@ -1,0 +1,14 @@
+{
+  "name": "not-so-epic-car-adventure",
+  "version": "1.0.0",
+  "description": "Entry for js13k 2015",
+  "author": "Max Kolyanov <m.kolyanov@gmail.com>",
+  "devDependencies": {
+    "gulp": "^3.8.7",
+    "gulp-concat": "^2.3.4",
+    "gulp-wrap": "^0.11.0"
+  },
+  "scripts": {
+    "build": "gulp build"
+  }
+}

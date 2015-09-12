@@ -88,6 +88,7 @@ function Entity(x, y, type) {
 			}
 			E.pick = function() {
 				P.life -= 1;
+				G.sounds.crash.play();
 			}
 			break;
 		case 'coin':
@@ -95,7 +96,14 @@ function Entity(x, y, type) {
 				G.ctx.drawImage(G.SPcoin, E.x,E.y);
 			}
 			E.pick = function() {
-				P.score += 10 * P.velY;
+				if(P.velY == 2) {
+					P.score += 45
+				} else if(P.velY > 1.5) {
+					P.score += 25
+				} else {
+					P.score += 10
+				}
+				G.sounds.coin.play();
 			}
 			break;
 		case 'heart':
@@ -103,7 +111,10 @@ function Entity(x, y, type) {
 				P.ctx.drawImage(P.SPheart, E.x,E.y);
 			}
 			E.pick = function() {
-				if(P.life < 3) P.life += 1;
+				if(P.life < 3) {
+					G.sounds.heart.play();
+					P.life += 1;
+				}
 			}
 			break;
 		case 'rock':
@@ -112,6 +123,7 @@ function Entity(x, y, type) {
 			}
 			E.pick = function() {
 				P.life -= 1;
+				G.sounds.crash.play();
 			}
 			break;
 		case 'powerup':
@@ -122,6 +134,7 @@ function Entity(x, y, type) {
 				P.velY = 2;
 				G.timers.powerup.timer = 10;
 				G.scorestep = G.scorestep * 10 * P.velY;
+				G.sounds.powerup.play();
 
 				G.timers.powerup.fn = function() {
 					P.velY = 1;
@@ -136,6 +149,8 @@ function Entity(x, y, type) {
 function Game() {
 	G = this;
 
+	G.state = 'menu';
+
 	G.canvas = document.getElementById('canvas')
 	G.ctx = canvas.getContext('2d')
 
@@ -143,17 +158,28 @@ function Game() {
 	G.height = 200;
 
 	if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
-		G.width = 100;
-		G.height = 100;
+		var scaleX = G.canvas.width / window.innerWidth;
+		var scaleY = G.canvas.height / window.innerHeight;
+		var scaleToFit = Math.min(scaleX, scaleY);
+		 
+		G.canvas.style.transformOrigin = "0 0";
+		G.canvas.style.transform = "scale("+scaleToFit+")";
+	} else {
+		G.canvas.style.width = 4*G.width + 'px';
+		G.canvas.style.height = 4*G.height + 'px';
 	}
 
-	G.canvas.style.width = 4*G.width + 'px';
-	G.canvas.style.height = 4*G.height + 'px';
+	G.setUpAudio()
+
+	G.highscore = localStorage.getItem("highscore") || ''
 
 	G.keys = {};
 
 	G.roadlines = [10, 50, 90, 130, 170, 210];
 	G.levelpos = 0;
+
+	G.maxObj = 15;
+	G.complexity = 0.04;
 
 	G.BLOCK_WIDTH = 8
   	G.LEVEL_HEIGHT = 180
@@ -168,7 +194,39 @@ function Game() {
   			timer: 0,
   			fn: function() {}
   		},
-  		text: {}
+  		text: {},
+  		speed1: {
+  			timer: 20,
+  			fn: function() {
+  				P.velY += 0.2;
+  				G.maxObj = 18;
+  				G.complexity = 0.06;
+  			}
+  		},
+  		speed2: {
+  			timer: 60,
+  			fn: function() {
+  				P.velY += 0.2;
+  				G.maxObj = 23;
+  				G.complexity = 0.06;
+  			}
+  		},
+  		speed3: {
+  			timer: 90,
+  			fn: function() {
+  				P.velY += 0.3;
+  				G.maxObj = 25;
+  				G.complexity = 0.09;
+  			}
+  		},
+  		speed4: {
+  			timer: 120,
+  			fn: function() {
+  				P.velY += 0.2;
+  				G.maxObj = 30;
+  				G.complexity = 0.1;
+  			}
+  		}
   	};
 
   	G.events = {
@@ -228,8 +286,31 @@ function Game() {
 
 Game.prototype = {
 	constructor: Game,
+	setUpAudio: function() {
+		G.sounds = {};
+		
+		G.sounds.crash = new Audio();
+		G.sounds.crash.src = jsfxr([3,,0.32,,0.18,0.7103,,-0.4177,,,,-0.16,,,,,,,1,,,0.24,,0.38]);
+
+		G.sounds.powerup = new Audio();
+		G.sounds.powerup.src = jsfxr([1,0.14,0.32,0.07,0.54,0.14,,0.1822,,,,,,0.0136,,,-0.56,-0.26,0.44,,,,,0.24]);
+
+		G.sounds.coin = new Audio();
+		G.sounds.coin.src = jsfxr([0,,0.0137,0.547,0.3928,0.4569,,,,,,0.4972,0.6884,,,,,,1,,,,,0.24]);		
+
+		G.sounds.heart = new Audio();
+		G.sounds.heart.src = jsfxr([0,,0.25,,0.3326,0.2065,,0.4065,,,,,,0.4386,,0.5992,,,1,,,,,0.24]);
+	},
 	update: function(dt) {	
 		G.scoreclock += dt;
+
+		if(P.life == 0) {
+			G.gameover();
+		}
+
+		if(P.velY < 1) {
+			P.velY += 0.01;
+		}
 
 		if(G.scoreclock >= 1000) {
 			G.scoreclock = 0;
@@ -270,13 +351,17 @@ Game.prototype = {
 			};
 		}
 
+		if(G.highscore && P.newhighscore && P.score > G.highscore) {
+			G.addtext('NEW HIGH SCORE!', 2);
+			P.newhighscore = false;
+		}
 
-		if(Math.random() < 0.05 && G.objects.length < 10) {
+		if(Math.random() < G.complexity && G.objects.length < G.maxObj) {
 			if(Math.random() < 0.3) {
 				G.objects.push(new Entity(util.rand(10, G.width-10), G.height, 'coin'))
 			} else {
 				if(Math.random() < 0.5) {
-					G.objects.push(new Entity(util.rand(50, G.width-100), G.height, 'box'))
+					G.objects.push(new Entity(util.rand(50, G.width-50), G.height, 'box'))
 				}
 				else {
 					if(Math.random() < 0.5)
@@ -287,11 +372,11 @@ Game.prototype = {
 			}
 		}
 
-		if(Math.random() < 0.005 && G.objects.length < 10 && P.life < 3) {
+		if(Math.random() < 0.005 && G.objects.length < G.maxObj && P.life < 3) {
 			G.objects.push(new Entity(util.rand(10, G.width-10), G.height, 'heart'))
 		}
 
-		if(Math.random() < 0.001 && G.objects.length < 10) {
+		if(Math.random() < 0.001 && G.objects.length < G.maxObj) {
 			G.objects.push(new Entity(util.rand(10, G.width-10), G.height, 'powerup'))
 		}
 
@@ -358,19 +443,89 @@ Game.prototype = {
 		};
 		if(G.texttodraw) {
 			ctx.fillStyle = "white";
+			ctx.textAlign = "center"; 
 			ctx.fillText(G.texttodraw, G.width/2, G.height/2);
+			ctx.textAlign = "left"; 
 		}
+	},
+	gameover: function() {
+		G.state = 'gameover';
+		if(P.score > parseInt(G.highscore)) {
+			localStorage.setItem("highscore", P.getScore());
+			G.highscore = P.getScore();
+		}
+	},
+	drawmenu: function() {
+		var ctx = G.ctx;
+
+		var lingrad = ctx.createLinearGradient(0,0,0,150);
+		lingrad.addColorStop(0, '#7a21a5');
+		lingrad.addColorStop(1, '#4a3355');
+
+		ctx.fillStyle = lingrad;
+		ctx.fillRect(0,0,G.height,G.width);
+
+
+ 		ctx.fillStyle = "white";
+ 		ctx.textAlign = "center"; 
+
+ 		ctx.fillText("NOT SO EPIC", G.width/2, 10);
+ 		ctx.fillText("REVERSE", G.width/2, 20);
+ 		ctx.fillText("CAR", G.width/2, 30);
+ 		ctx.fillText("ADVENTURE", G.width/2, 40);
+
+		if(G.highscore) {
+	 		ctx.fillText("HIGHSCORE", G.width/2, G.height - 40);
+	 		ctx.fillText(G.highscore, G.width/2, G.height - 20);
+	 	}
+ 		 
+		ctx.fillText("PRESS <SPACE> TO START", G.width/2, G.height/2);
+	},
+	drawgameover: function() {
+		var ctx = G.ctx;
+
+		var lingrad = ctx.createLinearGradient(0,0,0,150);
+		lingrad.addColorStop(0, '#7a21a5');
+		lingrad.addColorStop(1, '#4a3355');
+
+		ctx.fillStyle = lingrad;
+		ctx.fillRect(0,0,G.height,G.width);
+
+
+ 		ctx.fillStyle = "white";
+ 		ctx.textAlign = "center"; 
+
+ 		ctx.fillText("SCORE", G.width/2, 40);
+ 		ctx.fillText(P.getScore(), G.width/2, 55);
+ 		
+ 		ctx.fillText("PRESS <SPACE> TO TRY AGAIN", G.width/2, G.height/2);
+
+		cancelAnimationFrame(G.loop);
 	},
 	loop: function(){
 		var now = Date.now()
 	    var dt = now - G.lastUpdate;
 	    G.lastUpdate = now;
 
-		G.update(dt);
-		player.update(dt);
-		G.draw();
-		player.draw();
-		requestAnimationFrame(G.loop);
+	    switch(G.state) {
+	    	case 'menu':
+	    		G.drawmenu()
+	    		requestAnimationFrame(G.loop);
+	    	break;
+	    	case 'game':
+	    		G.update(dt);
+	    		player.update(dt);
+	    		G.draw();
+	    		player.draw();
+	    		requestAnimationFrame(G.loop);
+	    	break;
+	    	case 'gameover':
+	    		G.drawgameover()
+	    		cancelAnimationFrame(G.loop);
+	    	break;
+
+	    }
+
 	},
 	addtext: function(text, t) {
 		G.texttodraw = text;
@@ -391,10 +546,12 @@ function Player (){
 	P.height = 18;
 	P.speed = 3;
 	P.velX = 1;
-	P.velY = 1;
+	P.velY = 0;
 	P.angle = 0;
 	P.score = 0;
 	P.life = 3;
+
+	P.newhighscore = true;
 
 	P.x = game.width/2 - P.width/2;
 	P.y = 20;
@@ -462,12 +619,7 @@ Player.prototype = {
 		 	points[i] = util.rotatePoint({x:p, y:q},points[i],cAngle)
 		 };
 
-
 		var dx = -1 * P.velX * Math.sin(Math.PI/180 * P.angle)
-		// 	dy =  Math.cos(Math.PI/180 * P.angle);
-
-		// P.velY = dy;
-
 		if(P.x + dx > 0 && P.x +dx < game.width - P.width)
 			P.x += dx;
 
@@ -487,14 +639,29 @@ Player.prototype = {
 	}
 }
 
-var player, game;
-
-window.addEventListener("load", function () {
+function reset() {
 	game = new Game();
 	player = new Player();
 
 	game.lastUpdate = Date.now();
 	game.loop();
+}
+
+document.addEventListener("keydown", function (e) {
+	if(e.keyCode == 32 && G.state != 'game') {
+		e.preventDefault()
+		if(G.state == 'menu') {
+			G.state = 'game'
+		}
+		if(G.state == 'gameover') {
+			reset();
+			G.state = 'game'
+		}
+	}
 });
+
+var player, game;
+
+window.addEventListener("load", reset);
 
 })();
